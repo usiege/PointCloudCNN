@@ -1,3 +1,4 @@
+
 class CNN(object):
     """docstring for CNN"""
     

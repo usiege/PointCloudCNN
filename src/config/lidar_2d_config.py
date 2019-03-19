@@ -13,5 +13,8 @@ def lidar_2d_config():
     # imageset path
     mc.IMAGESET_PATH = '/home/charles/dataset/squeezeseg/ImageSet'
     
+    # default log path
+    mc.LOG_DIR = './log'
+    
     
     return mc

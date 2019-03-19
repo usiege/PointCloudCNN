@@ -1,7 +1,5 @@
-from model import *
 
-
-class Kitti(Model):
+class Kitti(object):
     """docstring for Kitti"""
     
     def __init__(self, arg):

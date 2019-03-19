@@ -31,10 +31,10 @@ class Model(object):
         self._imageset_root_path = arg.IMAGESET_PATH
         
         # imageset data idxs
-        self._imageset_idx = self._load_imageset_idx()
+        self._imageset_idx = []
         
         # batch reader
-        self._permutation_idx = self._imageset_idx
+        self._permutation_idx = []
         self._cur_idx = 0
         self._batch_size = arg.BATCH_SIZE
         
@@ -42,7 +42,8 @@ class Model(object):
         self._transfer = Transfer(arg)
         # statistic tool for data
         self._statistic = Statistic(arg)
-    
+        
+        
     @property
     def FLAGS(self):
         return self._FLAGS
@@ -59,8 +60,24 @@ class Model(object):
     def image_set(self):
         return self._imageset_idx
 
+
+    def load_imageset(self, process='train'):
+        self._imageset_idx = self._load_imageset_idx(process=process)
+        self._permutation_idx = self._imageset_idx
+        self._cur_idx = 0
+
+
     def _load_imageset_idx(self, process='train'):
-        image_set_file = os.path.join(self._imageset_root_path, process + '.txt')
+
+        if process == 'train':
+            image_set_file = os.path.join(self._imageset_root_path, 'train.txt')
+        elif process == 'eval':
+            image_set_file = os.path.join(self._imageset_root_path, 'val.txt')
+        elif process == 'test':
+            image_set_file = os.path.join(self._imageset_root_path, 'test.txt')
+        else:
+            image_set_file = os.path.join(self._imageset_root_path, 'all.txt')
+
         assert os.path.exists(image_set_file), \
             'File does not exist: {}'.format(image_set_file)
     
@@ -69,14 +86,14 @@ class Model(object):
     
         return image_idx
     
-    # None
-    def load_collection(self, process='all'):
-        return []
+    # # None
+    # def load_collection(self, process='all'):
+    #     return []
 
 
     def _shuffle_image_idx(self):
         self._permutation_idx = [self._imageset_idx[i] \
-                          for i in np.random.permutation(np.arange(len(self._image_idx)))]
+                          for i in np.random.permutation(np.arange(len(self._imageset_idx)))]
         self._cur_idx = 0
     
     def _lidar_2d_path_at(self, idx):

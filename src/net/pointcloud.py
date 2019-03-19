@@ -18,15 +18,24 @@ class PointCloud(CNN):
     
     def __init__(self, arg):
         super(PointCloud, self).__init__(arg)
+        self._arg = arg
+
+        # model parameters
+        self.net_params = []
+
+
+    @property
+    def model(self):
+        return self._model
+    
+    @model.setter
+    def model(self, arg):
         self._model = arg
+    
     
     @property
     def is_training(self):
         return self._is_training
-    
-    @property
-    def model(self):
-        return self._model
 
 
     def get_input_tensor(self):
@@ -51,16 +60,23 @@ class PointCloud(CNN):
         loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=pred, labels=label)
         return tf.reduce_mean(loss)
 
+
     # take input tensor to network
     def get_net(self, point_cloud, is_training):
+        self.net_params = []
         self._is_training = is_training
         return self._pointnet_module(point_cloud)
 
     
     def _placeholder_inputs(self):
         return None
-    
 
+    # squeezeseg series base network
+    def _squeezeseg_module(self):
+
+        return None
+    
+    
 	# pointnet base network    
     def _pointnet_module(self, point_cloud, bn_decay=None):
         """ ConvNet baseline, input is BxNxC (batch, number, channels)"""
@@ -115,4 +131,13 @@ class PointCloud(CNN):
         return net
     
     
-
+    # pointnet++ base network
+    def _pointnet2_net_module(self):
+        
+        return None
+    
+    def _voxelnet_feature_module(self):
+        
+        return None
+    
+    
