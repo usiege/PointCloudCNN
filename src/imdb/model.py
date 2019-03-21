@@ -36,7 +36,7 @@ class Model(object):
         # batch reader
         self._permutation_idx = []
         self._cur_idx = 0
-        self._batch_size = arg.BATCH_SIZE
+        self._batch_size = FLAGS.batch_size
         
         # transfer for original data
         self._transfer = Transfer(arg)

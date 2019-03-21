@@ -13,6 +13,8 @@ def _variable_on_cpu(name, shape, initializer, use_fp16=False):
     """
     with tf.device('/cpu:0'):
         dtype = tf.float16 if use_fp16 else tf.float32
+        dtype = use_fp16 and tf.float16 or tf.float32
+        
         var = tf.get_variable(name, shape, initializer=initializer, dtype=dtype)
     return var
 

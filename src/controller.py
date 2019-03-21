@@ -18,6 +18,8 @@ from config.config import *
 
 import time
 import tensorflow as tf
+from tensorflow.python.client import device_lib
+print(device_lib.list_local_devices())
 
 FLAGS = arg_config()
 
@@ -61,13 +63,28 @@ def get_bn_decay(batch):
     return bn_decay
 
 
-# def feed_dict(data):
-#     return {}
 
-def data_to_feeddata(batch_size, origin_data):
-    data = np.reshape(origin_data, (batch_size, origin_data.shape[1] * origin_data.shape[2], origin_data.shape[3]))
+def data_to_feeddata(batch_size, origin_data, mc=None, data_norm=False):
     
+    data = np.reshape(origin_data,
+                      (batch_size, origin_data.shape[1] * origin_data.shape[2], origin_data.shape[3]))
+
+    # inputs: x, y, z, intensity, depth; outputs: label
     inputs, outputs = data[:, 0:NUM_POINT, 0:5], data[:, 0:NUM_POINT, 5]
+
+    # mask depth > 0
+    inputs_mask = np.reshape((inputs[:,:,4] > 0),
+                             (inputs.shape[0], inputs.shape[1], 1))
+
+    # normalize
+    if data_norm:
+        inputs = (inputs - mc.INPUT_MEAN) / mc.INPUT_STD
+    
+    # weight
+    weight = np.zeros(outputs.shape)
+    for l in range(mc.NUM_CLASS):
+        weight[outputs==l] = mc.CLS_LOSS_WEIGHT[int(l)]
+    
     return inputs, outputs
 
 
@@ -87,7 +104,15 @@ class Controller(object):
 
     def load_net(self, mc):
         self.mc = mc
-        self._net_did_load(is_training=True, train_enable=True, val_enable=False)
+        
+        os.environ['CUDA_VISIBLE_DEVICES'] = str(GPU_INDEX)
+        os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+        
+        self._net_did_load(is_training=True,
+                           train_enable=True,
+                           val_enable=False,
+                           new_train=False)
+        
         
     def _net_did_load(self, is_training=True, train_enable=True, val_enable=False, 
         new_train=True):
@@ -102,12 +127,15 @@ class Controller(object):
             os.makedirs(CHECKPOINT_DIR)
         
         self.model = Model(self.mc, FLAGS)
-        self.net.model = self.model
+        model = self.model
+        # self.net.model = self.model
         
         with tf.Graph().as_default() as graph:
-
+    
+            # with gpu
             with tf.device('/gpu:' + str(GPU_INDEX)):
-                pts_pl, labels_pl = self.net.get_input_tensor()
+                
+                pts_pl, labels_pl = self.net.get_input_tensor(model)
                 is_training_pl = self.net.get_is_training_tensor()
                 
                 self.ops["pts_pl"] = pts_pl
@@ -143,52 +171,52 @@ class Controller(object):
                 # Add ops to save and restore all the variables.
                 saver = tf.train.Saver()
                 self.saver = saver
-            
+
+            # with gpu
             with tf.device('/gpu:' + str(GPU_INDEX)):
+
+                # Create a session
+                config = tf.ConfigProto()
+                config.gpu_options.allow_growth = True
+                config.allow_soft_placement = True
+                config.log_device_placement = True
+                sess = tf.Session(config=config)
+
+                # if old restore model
+                global_step = 0
+                if not new_train:
+                    ckpt = tf.train.get_checkpoint_state(CHECKPOINT_DIR)
+                    ckpt_path = ckpt.model_checkpoint_path
+                    if ckpt and ckpt_path:
+                        saver.restore(sess, ckpt_path)
+                        global_step = ckpt_path.split('/')[-1].split('-')[-1]
+                        global_step = int(global_step)
+    
+                # Add summary writers
+                merged = tf.summary.merge_all()
+                train_writer = tf.summary.FileWriter(TRAIN_DIR, graph)
+                eval_writer = tf.summary.FileWriter(EVAL_DIR) # graph
+                self.ops["merged"] = merged
                 
-                with tf.Session() as sess:
-                    # Create a session
-                    config = tf.ConfigProto()
-                    config.gpu_options.allow_growth = True
-                    config.allow_soft_placement = True
-                    config.log_device_placement = True
-                    sess = tf.Session(config=config)
-
-                    # if old restore model
-                    global_step = 0
-                    if not new_train:
-                        ckpt = tf.train.get_checkpoint_state(CHECKPOINT_DIR)
-                        ckpt_path = ckpt.model_checkpoint_path
-                        if ckpt and ckpt_path:
-                            saver.restore(sess, ckpt_path)
-                            global_step = ckpt_path.split('/')[-1].split('-')[-1]
-
-                    # Add summary writers
-                    merged = tf.summary.merge_all()
-                    train_writer = tf.summary.FileWriter(TRAIN_DIR, graph)
-                    eval_writer = tf.summary.FileWriter(EVAL_DIR, graph)
-                    self.ops["merged"] = merged
+                # Init variables
+                init = tf.global_variables_initializer()
+                sess.run(init, {is_training_pl: is_training})
+                
+                for epoch in range(global_step, MAX_EPOCH):
+                    self.model.log_string('**** EPOCH %03d ****' % (epoch))
+                    sys.stdout.flush()
                     
-                    # Init variables
-                    init = tf.global_variables_initializer()
-                    sess.run(init, {is_training_pl: is_training})
+                    if train_enable:
+                        self._train_one_epoch(sess, train_writer)
+                    if val_enable:
+                        self._eval_one_epoch(sess, eval_writer)
                     
-                    for epoch in range(global_step, MAX_EPOCH):
-                        self.model.log_string('**** EPOCH %03d ****' % (epoch))
-                        sys.stdout.flush()
-                        
-                        if train_enable:
-                            self._train_one_epoch(sess, train_writer)
-                        if val_enable:
-                            self._eval_one_epoch(sess, eval_writer)
-                        
-                        # Save the variables to disk.
-                        if epoch % 10 == 0:
-                            save_path = saver.save(sess, os.path.join(CHECKPOINT_DIR, "model.ckpt"),global_step=epoch)
-                            self.model.log_string("Model saved in file: %s" % save_path)
+                    # Save the variables to disk.
+                    if epoch % 10 == 0:
+                        save_path = saver.save(sess, os.path.join(CHECKPOINT_DIR, "model.ckpt"),global_step=epoch)
+                        self.model.log_string("Model saved in file: %s" % save_path)
     
     def _train_one_epoch(self, sess, writer):
-        
         # GPU_INDEX = GPU_INDEX
         is_training = True
         
@@ -206,7 +234,7 @@ class Controller(object):
             
             for batch_idx in range(num_batches):
                 batch_data = self.model.read_batch()
-                pointclouds, labels = data_to_feeddata(BATCH_SIZE, batch_data)
+                pointclouds, labels = data_to_feeddata(BATCH_SIZE, batch_data, mc=self.model.mc)
                 feed_dict = {ops['pts_pl']: pointclouds,
                              ops['labels_pl']: labels,
                              ops['is_training_pl']: is_training, }
@@ -257,7 +285,7 @@ class Controller(object):
 
             for batch_idx in range(num_batches):
                 batch_data = self.model.read_batch()
-                pointclouds, labels = data_to_feeddata(BATCH_SIZE, batch_data)
+                pointclouds, labels = data_to_feeddata(BATCH_SIZE, batch_data, mc=self.model.mc)
                 feed_dict = {ops['pts_pl']: pointclouds,
                              ops['labels_pl']: labels,
                              ops['is_training_pl']: is_training, }
@@ -288,19 +316,6 @@ class Controller(object):
                 np.mean(np.array(total_correct_class) / np.array(total_seen_class,
                                                                  dtype=np.float))))
         
-
-
-def train():
-    print('this is training process ...\n')
-    
-
-def eval():
-    print('this is evaluation process ...\n')
-    
-
-def test():
-    print('this is testing process ...\n')
-    
 
 
 
