@@ -19,9 +19,35 @@ from config.config import *
 import time
 import tensorflow as tf
 from tensorflow.python.client import device_lib
-print(device_lib.list_local_devices())
 
-FLAGS = arg_config()
+
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument('-n', '--net', default='pointnet',
+                    help='pointcloud net use ["pointnet","squeezeseg","voxelnet"]')
+parser.add_argument('-d','--debug', default=0, help='for DEBUG')
+
+parser.add_argument('--p', default='train', help='for process use ["train","eval","test"]')
+parser.add_argument('--gpu', type=int, default=0, help='GPU to use [default: GPU 0]')
+parser.add_argument('--log_dir', default='log', help='Log dir [default: log]')
+parser.add_argument('--num_point', type=int, default=4096 * 8, help='Point number [default: 4096]')
+parser.add_argument('--max_epoch', type=int, default=500, help='Epoch to run [default: 50]')
+parser.add_argument('--batch_size', type=int, default=2, help='Batch Size during training [default: 24]')
+parser.add_argument('--learning_rate', type=float, default=0.001, help='Initial learning rate [default: 0.001]')
+parser.add_argument('--momentum', type=float, default=0.9, help='Initial learning rate [default: 0.9]')
+parser.add_argument('--optimizer', default='adam', help='adam or momentum [default: adam]')
+parser.add_argument('--decay_step', type=int, default=300000, help='Decay step for lr decay [default: 300000]')
+parser.add_argument('--decay_rate', type=float, default=0.5, help='Decay rate for lr decay [default: 0.5]')
+parser.add_argument('--test_area', type=int, default=6, help='Which area to use for test, option: 1-6 [default: 6]')
+
+FLAGS = parser.parse_args()
+
+DEBUG = False if FLAGS.debug == 0 else True
+if DEBUG:
+    print(device_lib.list_local_devices())
+
+# parameters
 
 BATCH_SIZE = FLAGS.batch_size
 NUM_POINT = FLAGS.num_point
@@ -114,8 +140,8 @@ class Controller(object):
                            new_train=False)
         
         
-    def _net_did_load(self, is_training=True, train_enable=True, val_enable=False, 
-        new_train=True):
+    def _net_did_load(self, is_training=True,
+                      train_enable=True, val_enable=True, new_train=True):
         
         LOG_DIR = FLAGS.log_dir
         TRAIN_DIR = os.path.join(LOG_DIR, 'train')
@@ -216,6 +242,9 @@ class Controller(object):
                         save_path = saver.save(sess, os.path.join(CHECKPOINT_DIR, "model.ckpt"),global_step=epoch)
                         self.model.log_string("Model saved in file: %s" % save_path)
     
+    def _metric_evluation(self):
+        pass
+        
     def _train_one_epoch(self, sess, writer):
         # GPU_INDEX = GPU_INDEX
         is_training = True
@@ -284,6 +313,7 @@ class Controller(object):
         with tf.device("/gpu:" + str(GPU_INDEX)):
 
             for batch_idx in range(num_batches):
+                v
                 batch_data = self.model.read_batch()
                 pointclouds, labels = data_to_feeddata(BATCH_SIZE, batch_data, mc=self.model.mc)
                 feed_dict = {ops['pts_pl']: pointclouds,
@@ -292,6 +322,7 @@ class Controller(object):
                 summary, step, _, loss_val, pred_val = sess.run(
                     [ops['merged'], ops['step'], ops['train_op'], ops['loss'], ops['pred']],
                     feed_dict=feed_dict)
+                
                 writer.add_summary(summary, step)
                 
                 pred_val = np.argmax(pred_val, 2)
@@ -300,21 +331,21 @@ class Controller(object):
                 total_seen += BATCH_SIZE*NUM_POINT
                 loss_sum += loss_val*BATCH_SIZE
                 
-                for i in range(labels.shape[0]):
-                    for j in range(labels.shape[1]):
-                        l = labels[i, j]
+                for i in range(BATCH_SIZE):
+                    for j in range(NUM_POINT):
+                        l = int(labels[i, j])
                         total_seen_class[l] += 1
                         total_correct_class[l] += (pred_val[i, j] == l)
                         
                 if batch_idx % 10 == 0:
                     print('detection for batch %d/%d' % (batch_idx, num_batches))
-            
+                    print( 'current acc is ---> %f' %
+                        np.mean(np.array(total_correct_class) / np.array(total_seen_class), dtype=np.float))
 
             self.model.log_string('eval mean loss: %f' % (loss_sum / float(total_seen / NUM_POINT)))
             self.model.log_string('eval accuracy: %f' % (total_correct / float(total_seen)))
             self.model.log_string('eval avg class acc: %f' % (
-                np.mean(np.array(total_correct_class) / np.array(total_seen_class,
-                                                                 dtype=np.float))))
+                np.mean(np.array(total_correct_class) / np.array(total_seen_class, dtype=np.float))))
         
 
 
@@ -322,6 +353,10 @@ class Controller(object):
 if __name__ == "__main__":
     
     os.environ['CUDA_VISIBLE_DEVICES'] = "0"
+    
+    print('**************************************************')
+    print(FLAGS.net)
+    
     ct = Controller()
     mc = lidar_2d_config()
     ct.load_net(mc)

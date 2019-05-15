@@ -2,7 +2,6 @@ import numpy as np
 import os
 
 
-
 def data_to_feeddata(batch_size, origin_data):
     return None
 
@@ -60,7 +59,15 @@ class Model(object):
     def image_set(self):
         return self._imageset_idx
 
+    
 
+# ############################## statistic
+
+
+
+
+# ############################## model
+    
     def load_imageset(self, process='train'):
         self._imageset_idx = self._load_imageset_idx(process=process)
         self._permutation_idx = self._imageset_idx
@@ -138,6 +145,20 @@ class Model(object):
         return np.array(batch_data)
     
     
+    def read_all_data(self, shuffle=False):
+        image_idx = self._imageset_idx
+        
+        if shuffle:
+            self._shuffle_image_idx()
+        
+        data = []
+        for idx in image_idx:
+            path = self._lidar_2d_path_at(idx)
+            record = self.read_data(path)
+            data.append(record)
+    
+        return np.array(data)
+    
     def _write_parser(self):
         FLAGS = self.FLAGS
         log_dir = FLAGS.log_dir
@@ -176,6 +197,12 @@ class Statistic(object):
     def __init__(self, arg):
         super(Statistic, self).__init__()
         self.arg = arg
+        
+    
+    def statistic_data(self, data):
+        print (np.shape(data))
+        
+        
 
 
 def main():
