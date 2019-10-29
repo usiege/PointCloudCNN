@@ -8,13 +8,12 @@ sys.path.append(os.path.join(ROOT_DIR, 'utils'))
 
 from cnn import CNN
 
-import tf_util as tfu
-import squ_util as sul
-import vol_util as vol
-
 import tensorflow as tf
 import numpy as np
 
+import tf_util as tfu # for pointnet
+import squ_util as sul # for squeezeseg
+import gn_util as gul # for graph cnn
 
 class PointCloud(CNN):
     """docstring for PointCloud"""
@@ -86,10 +85,12 @@ class PointCloud(CNN):
         self._is_training = is_training
         
         return self._pointnet_module(point_cloud)
-
     
-
     
+    # dynamic graph cnn
+    def _dynamic_graph_module(self, point_cloud):
+        pass
+
     
 	# pointnet base network    
     def _pointnet_module(self, point_cloud, bn_decay=None):

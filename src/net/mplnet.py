@@ -7,9 +7,10 @@
 
 from cnn import *
 
-class MPLNet(object):
+class MPLNet(CNN):
 	"""docstring for MPLNet"""
 	def __init__(self, arg):
 		super(MPLNet, self).__init__()
 		self.arg = arg
 		
+	

@@ -5,7 +5,6 @@
 import numpy as np
 import time
 
-
 def visualize_with(pattern, map, mc):
     
     if pattern == "intensity":
