@@ -16,6 +16,7 @@ from mlp_dropout import MLPClassifier, MLPRegression
 from sklearn import metrics
 from util import cmd_args, load_data
 
+
 class Classifier(nn.Module):
     def __init__(self, regression=False):
         super(Classifier, self).__init__()

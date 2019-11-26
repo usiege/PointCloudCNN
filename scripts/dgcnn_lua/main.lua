@@ -55,7 +55,9 @@ local function commandLine()
    -- SortPooling options
    cmd:option('-noSortPooling',   false,         'no SortPooling, performs only pooling without sorting.')
    cmd:option('-sumNodeFeatures', false,         'no SortPooling, direclty sum node features followed by only dense layers.')
-   cmd:option('-k',               0.6,           'Specify the integer k (how many nodes to keep) in SortPooling. If you set 0 < k <= 1, then k will be converted to an integer so that k% graphs in the dataset have nodes less than this integer. Set k=1 so that k becomes the maximum node number among all graphs')
+   cmd:option('-k',               0.6,           'Specify the integer k (how many nodes to keep) in SortPooling. If you set 0 < k <= 1, \
+   then k will be converted to an integer so that k% graphs in the dataset have nodes less than this integer. \
+   Set k=1 so that k becomes the maximum node number among all graphs')
    -- 1-D convolution and fully-connected layers' settings
    cmd:option('-TCChannels',      '16 32',       'Specify the # of channels of the 1-D temporal convolution layers')
    cmd:option('-TCkw',            '0 5',         'Specify the kernel width of temporal convolution layers, 0 means to use the total # of outputChannels of the effective GraphConv layers (only for first layer)')
@@ -216,7 +218,7 @@ local function create_model(opt)
       local j = opt.nGLayers - i
       c[j] = nn.Sequential()
       if i == 1 then  -- the last layer
-         if opt.oneWeight then  -- if fixing the GraphConv weights to 1, i.e., do not learn weights through backpropagation
+         if opt.oneWeight then   -- if fixing the GraphConv weights to 1, i.e., do not learn weights through backpropagation
             c[j]:add(nn.GraphConv(opc[j], opc[j+1], opt.bias, 1))
          else
             c[j]:add(nn.GraphConv(opc[j], opc[j+1], opt.bias))
@@ -360,6 +362,9 @@ local function load_data(opt)
    local Ns = torch.zeros(N) -- record the size of each graph
    for i = 1, Ntrain do
       trainset.instance[i] = dataset.instance[shuffle_idx[i]]
+--      print("--------")
+--      print(type(trainset.instance[i][1]))
+--      print(trainset.instance[i][1])
       trainset.instance[i][1] = trainset.instance[i][1]:type('torch.FloatTensor')
       trainset.instance[i][2] = trainset.instance[i][2]:type('torch.FloatTensor')
       trainset.instance[i][2] = processNodeLabel(trainset.instance[i][2], trainset.instance[i][1])

@@ -12,7 +12,6 @@ import random
 import pdb
 import os
 
-
 def load_data(ds_name):
     f = open(DATA_DIR + "/%s.graph"%ds_name, "r")
     data = pickle.load(f)
