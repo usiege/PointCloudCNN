@@ -528,6 +528,8 @@ function train(dataset)
          targets[batchCount] = y
       end
 
+   		-- print(inputs)
+
       -- create closure to evaluate f(X) and df/dX
       local feval = function(x)
          -- get new parameters

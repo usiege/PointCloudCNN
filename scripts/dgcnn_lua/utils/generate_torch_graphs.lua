@@ -5,6 +5,7 @@
 --require 'debug'
 matio = require 'matio'
 require 'paths'
+require 'debug'
 
 Datasets = {'MUTAG', 'DD', 'NCI1', 'ptc', 'proteins', 'COLLAB', 'IMDBBINARY', 'IMDBMULTI'}
 
@@ -24,7 +25,10 @@ for _, dataname in pairs(Datasets) do
 --      print(k, ':', info[k])
 --   end
 
-   local tmp = matio.load(datapath)
+   --print(debug.traceback())
+   --local tmp = matio.load(datapath, {'lmutag'})
+   --matio.use_lua_strings = true
+   local tmp = matio.load(datapath).data:cuda()
    print(tmp)
 
    local tmp_label = tmp[string.lower('l'..dataname)]:type('torch.ByteTensor') -- convert to bytetensor to save space
