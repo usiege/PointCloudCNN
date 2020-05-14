@@ -1,0 +1,2 @@
+model_checkpoint_path: "/home/mengweiliang/lzh/SqueezeSeg/data/SqueezeSeg/model_with_no_CLASS-23000"
+all_model_checkpoint_paths: "/home/mengweiliang/lzh/SqueezeSeg/data/SqueezeSeg/model_with_no_CLASS-23000"
