@@ -35,40 +35,55 @@ int main(int argc, char** argv)
 	vector<string> filename;
 
 
+	//original
 	string input_path = "/media/charles/exFAT/working/PointCloud/scripts/super_voxel-based/data/data_txt";
-	string input_trs_path = "/media/charles/exFAT/working/PointCloud/scripts/super_voxel-based/output";
-	string result_path = "/media/charles/exFAT/working/PointCloud/scripts/super_voxel-based/result";
+	//des
+	string input_trs_path = "/media/charles/exFAT/working/PointCloud/scripts/super_voxel-based/data/data_xyz";
+	string result_path = "/media/charles/exFAT/working/PointCloud/scripts/super_voxel-based/data/result";
 
 	float voxel_resolution = 0.75f;//0.75
 	float seed_resolution = 2.0f;//2.5
 	float spatial_importance = 1.0f;//1.0
-	float normal_importance = 4.0f;//4.0
+	float normal_importance = 4.0f;//4.n
 
 	cout << "segmentation test" << endl;
 
 	pcl::PCDWriter writer;
 
+	//*
 	if (file_xyz(input_path, input_trs_path) == -1)
 	{
 
 		cerr << "can not open file" << input_path<<" and "<<input_trs_path<< endl;
 		return -1;
 	}
-	getFiles(input_trs_path, files, filename);
-	cout << "input tring path update done!" << endl;
+	//*/
 
+	
+	getFiles(input_trs_path, files, filename);
+	cout << "input string path update done!" << endl;
+
+	int i = 0;
 	for (vector<string>::iterator it = files.begin(), pit = filename.begin(); 
 	it != files.end(), pit != filename.end(); it++,pit++)
 	{
 		cout << "files: " << *it << endl;
 		cout << "filename: " << *pit << endl;
 
-		pcl::PointCloud<pcl::PointXYZ>::Ptr road(new pcl::PointCloud<pcl::PointXYZ>), remain(new pcl::PointCloud<pcl::PointXYZ>);
+		pcl::PointCloud<pcl::PointXYZ>::Ptr road(new pcl::PointCloud<pcl::PointXYZ>);
+		pcl::PointCloud<pcl::PointXYZ>::Ptr remain(new pcl::PointCloud<pcl::PointXYZ>);
 		pcl::PointCloud<pcl::PointXYZ> cloud;
-		step1(*it,road,remain);
-		step2(*remain, *road, result_path, *pit);
-	}
 
+		pcl::io::loadPCDFile(*it, *remain);
+		//step1(*it,road,remain);
+		//cout << "step1 done!" << endl;
+
+		step2(*remain, *road, result_path, *pit);
+		cout << "step2 done!" << endl;
+		i++;
+		if(i == 1) break;
+	}
+	
 	cout << "END!" << endl;
 	return (0);
 }

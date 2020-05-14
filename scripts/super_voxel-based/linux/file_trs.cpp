@@ -10,60 +10,43 @@ filesname: ??????????????????
 */
 void getFiles(string path, vector<string>& files, vector<string>& filesname)
 {
-	//??????  
+	//??????
 	long   hFile = 0;
-	//??????  
-	/*struct _finddata_t fileinfo;
-	string p;
-	if ((hFile = _findfirst(p.assign(path).append("/*").c_str(), &fileinfo)) != -1)
+	struct dirent *ptr;
+	DIR *dir;
+	dir=opendir(path.c_str());
+
+	cout << "In getFiles: " << endl;
+	while((ptr=readdir(dir))!=NULL)
 	{
-		do
-		{
-			//???????,?????  
-			//???????,?????§Ò?  
-			if ((fileinfo.attrib &  _A_SUBDIR))
-			{
-				if (strcmp(fileinfo.name, ".") != 0 && strcmp(fileinfo.name, "..") != 0)
-					getFiles(p.assign(path).append("/").append(fileinfo.name), files, filesname);
-			}
-			else
-			{
-				files.push_back(p.assign(path).append("/").append(fileinfo.name));
-				filesname.push_back(fileinfo.name);
-				//files.push_back(fileinfo.name);
-			}
-		} while (_findnext(hFile, &fileinfo) == 0);
-		_findclose(hFile);
-	}*/
-	struct dirent *ptr;    
-	 DIR *dir;
-	 dir=opendir(path.c_str());
-	 while((ptr=readdir(dir))!=NULL)
-	    {
-	  
-	    //????'.'??'..'??????
+
+		//????'.'??'..'??????
 		if(ptr->d_name[0] == '.')
-		    continue;
+			continue;
 		string fullname=path+"/"+ptr->d_name;
 
 		files.push_back(fullname);
 		string p=ptr->d_name;
+
 		int pos = p.find_last_of('.');
-		//cout<<fullname<<endl;
+		cout<<fullname<<endl;
 
+		filesname.push_back(p.substr(pos-9, 9));
+		cout << p.substr(pos-9, 9) << endl;
 
-		filesname.push_back(p.substr(pos+1));
-		//cout<<p.substr(pos+1)<<endl;
-	      
-	    
-	    }
-	    closedir(dir);
+	}
+	cout << "away from getFiles!" << endl;
+	closedir(dir);
 }
+
+
 /*?????????????????????????????????¡¤????
 full_name: ??¡¤???????????
 */
 string getName(const char* full_name)
 {
+	//cout << "full name: " << full_name << endl;
+
 	string file_name = full_name;
 	const char*  mn_first = full_name;
 	const char*  mn_last = full_name + strlen(full_name);
@@ -77,6 +60,7 @@ string getName(const char* full_name)
 		mn_last = full_name + strlen(full_name);
 
 	file_name.assign(mn_first, mn_last);
+	//cout << "file name: " << file_name << endl;
 
 	return file_name;
 }
@@ -89,13 +73,15 @@ int file_xyz(string file_path, string result_path)
 	vector<string> files;
 	vector<string> filename, filename1;
 	getFiles(file_path, files, filename);
-	for (vector<string>::iterator it = files.begin(), pit = filename.begin(); it < files.end(), pit<filename.end(); it++, pit++)
+	for (vector<string>::iterator it = files.begin(), pit = filename.begin();
+	it < files.end(), pit<filename.end(); it++, pit++)
 	{
 		fstream fin(*it, ios::in);
 		ifstream infile;
 		ostringstream str;
 		char a[100];
 		strcpy(a, (*pit).c_str());
+
 		str << result_path <<"/"<< getName(a) << ".xyz";
 		char txt[200];
 		infile.open(*it);

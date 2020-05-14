@@ -1,5 +1,5 @@
 #include <segment_process.h>
-#include <file_trs.h> 
+#include <file_trs.h>
 
 float voxel_resolution=0.75, seed_resolution=2.0, spatial_importance=1.0, normal_importance=5.0, color_importance = 0.0;
 uint32_t min_segment_size=100;
@@ -59,29 +59,32 @@ void step2(pcl::PointCloud<pcl::PointXYZ> cloud_in, pcl::PointCloud<pcl::PointXY
 {
 	typedef pcl::PointXYZRGB PointT;
 	typedef pcl::LCCPSegmentation<PointT>::SupervoxelAdjacencyList SuperVoxelAdjacencyList;
-	//ÊäÈëµãÔÆ  
+
+	//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	//pcl::console::TicToc tt;
 	pcl::PointCloud<PointT>::Ptr input_cloud_ptr(new pcl::PointCloud<PointT>);
 	pcl::PCLPointCloud2 input_pointcloud2;
 	pcl::copyPointCloud(cloud_in, *input_cloud_ptr);
 	//PCL_INFO("Done making cloud\n");
 	//std::cerr << "Start...\n", tt.tic();
-	//³¬Ìå¾ÛÀà ²ÎÊýÒÀ´ÎÊÇÁ£×Ó¾àÀë¡¢¾§ºË¾àÀë¡¢ÑÕÉ«ÈÝ²î¡¢  
+	//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó¾ï¿½ï¿½ë¡¢ï¿½ï¿½ï¿½Ë¾ï¿½ï¿½ë¡¢ï¿½ï¿½É«ï¿½Ý²î¡¢
 	bool use_single_cam_transform = false;
 	bool use_supervoxel_refinement = false;
 
 	unsigned int k_factor = 0;
 
-	//voxel_resolution is the resolution (in meters) of voxels used¡¢seed_resolution is the average size (in meters) of resulting supervoxels    
+	//voxel_resolution is the resolution (in meters) of voxels usedï¿½ï¿½seed_resolution is the average size (in meters) of resulting supervoxels
 	pcl::SupervoxelClustering<PointT> super(voxel_resolution, seed_resolution);
 	super.setUseSingleCameraTransform(use_single_cam_transform);
 	super.setInputCloud(input_cloud_ptr);
-	//Set the importance of color for supervoxels.   
+	//Set the importance of color for supervoxels.
 	super.setColorImportance(color_importance);
-	//Set the importance of spatial distance for supervoxels.  
+	//Set the importance of spatial distance for supervoxels.
 	super.setSpatialImportance(spatial_importance);
-	//Set the importance of scalar normal product for supervoxels.   
+	//Set the importance of scalar normal product for supervoxels.
 	super.setNormalImportance(normal_importance);
+	
+	//è¾“å‡ºç»“æ™¶åˆ†å‰²ç»“æžœï¼šç»“æžœæ˜¯ä¸€ä¸ªæ˜ å°„è¡¨
 	std::map<uint32_t, pcl::Supervoxel<PointT>::Ptr> supervoxel_clusters;
 
 	//PCL_INFO("Extracting supervoxels\n");
@@ -92,9 +95,9 @@ void step2(pcl::PointCloud<pcl::PointXYZ> cloud_in, pcl::PointCloud<pcl::PointXY
 	super.getSupervoxelAdjacency(supervoxel_adjacency);
 	//pcl::PointCloud<pcl::PointNormal>::Ptr sv_centroid_normal_cloud = pcl::SupervoxelClustering<PointT>::makeSupervoxelNormalCloud(supervoxel_clusters);
 
-	//LCCP·Ö¸î  
-	float concavity_tolerance_threshold = 8.0;// 8 
-	float smoothness_threshold = 0.1;//1.0 ÎÞÌ«´óÓ°Ïì
+	//LCCPï¿½Ö¸ï¿½
+	float concavity_tolerance_threshold = 8.0;// 8
+	float smoothness_threshold = 0.1;//1.0 ï¿½ï¿½Ì«ï¿½ï¿½Ó°ï¿½ï¿½
 	uint32_t noise_size = cloud_in.points.size() / min_segment_size;
 	bool use_extended_convexity = false;
 	bool use_sanity_criterion = false;
@@ -162,7 +165,7 @@ void step2(pcl::PointCloud<pcl::PointXYZ> cloud_in, pcl::PointCloud<pcl::PointXY
 		cloud_cluster->points[m].g = rgb1[1];
 		cloud_cluster->points[m].b = rgb1[2];
 	}*/
-	for (pit = labels.begin(); pit != labels.end(); ++pit)//±éÀúËùÓÐµÄlabel
+	for (pit = labels.begin(); pit != labels.end(); ++pit)//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ðµï¿½label
 	{
 
 		std::vector<int> rgb;
@@ -175,7 +178,7 @@ void step2(pcl::PointCloud<pcl::PointXYZ> cloud_in, pcl::PointCloud<pcl::PointXY
 		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_cluster1(new pcl::PointCloud<pcl::PointXYZRGB>);
 		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cluster_xyz(new pcl::PointCloud<pcl::PointXYZ>);
 		pcl::PointXYZRGB single_cloud;
-		for (int j = 0; j < point_num; j++)//±éÀúËùÓÐµÄpoint
+		for (int j = 0; j < point_num; j++)//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ðµï¿½point
 		{
 			if (sv_labeled_cloud->points[j].label == *pit)
 			{
@@ -209,7 +212,7 @@ void step2(pcl::PointCloud<pcl::PointXYZ> cloud_in, pcl::PointCloud<pcl::PointXY
 	ss_noise << filename.str() << "\\cloud_cluster_" << ++k << ".xyz";
 	pcl::copyPointCloud(*cloud_noise, *cloud_noise_xyz);
 	writer.write<pcl::PointXYZ>(ss_noise.str(), *cloud_noise_xyz, false);
-	/*ÔëÒôÑÕÉ«ºìÉ«*/
+	/*ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É«ï¿½ï¿½É«*/
 	for (int m = 0; m < cloud_noise->points.size(); m++)
 	{
 		cloud_noise->points[m].r = 255;

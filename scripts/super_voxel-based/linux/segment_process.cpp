@@ -1,22 +1,32 @@
-#include "segment_process.h"
+ #include "segment_process.h"
 #include "file_trs.h"
+
 float voxel_resolution = 0.75f;//0.75
 float seed_resolution = 2.0f;//2.5
 float color_importance = 0.0f;
 float spatial_importance = 1.0f;//1.0
 float normal_importance = 4.0f;//4.0
+
 void step1(string input, pcl::PointCloud<pcl::PointXYZ>::Ptr road, pcl::PointCloud<pcl::PointXYZ>::Ptr remain)
 {
 	//pcl::console::TicToc tt;
+
+
 	pcl::PointXYZ point;
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+	pcl::io::loadPCDFile(input, *cloud);
+
+	cerr << "Point cloud data: " << cloud->points.size() << " points" << endl;
+	/*
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_tmp(new pcl::PointCloud<pcl::PointXYZRGB>);
 	pcl::io::loadPCDFile(input, *cloud_tmp);
 	pcl::copyPointCloud(*cloud_tmp, *cloud);
-	//std::cerr << "start...\n", tt.tic();
+	*/
+
+	std::cerr << "\nstep1 start..." << std::endl;
 	pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
 	pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
-	std::vector<int> indice_index;
+
 	// Create the segmentation object
 	pcl::SACSegmentation<pcl::PointXYZ> seg;
 	// Optional
@@ -24,9 +34,33 @@ void step1(string input, pcl::PointCloud<pcl::PointXYZ>::Ptr road, pcl::PointClo
 	// Mandatory
 	seg.setModelType(pcl::SACMODEL_PLANE);
 	seg.setMethodType(pcl::SAC_RANSAC);
-	seg.setDistanceThreshold(0.2);
+	seg.setDistanceThreshold(0.02); //0.2
+	//seg.setMaxIterations(50);
+
 	seg.setInputCloud(cloud);
+	seg.setIndices(inliers); // important
+
+	cerr << "before segment" << endl;
+	cerr << "check cloud: " << cloud->points.size() << endl;
 	seg.segment(*inliers, *coefficients);
+	std::cerr << "--------- -----------" << endl;
+
+	if(inliers->indices.size() == 0)
+	{
+		PCL_ERROR("Could not estimate a planar model for the given dataset.\n");
+		return;
+	}
+
+	//???????????
+	std::cerr << "Model coefficients: " << coefficients->values[0] << " "
+		<< coefficients->values[1] << " "
+		<< coefficients->values[2] << " "
+		<< coefficients->values[3] << std::endl;
+	std::cerr << "Model inliers: " << inliers->indices.size() << std::endl;
+
+
+
+	std::vector<int> indice_index;
 	for (size_t i = 0; i < inliers->indices.size(); ++i)
 	{
 		road->points.push_back(cloud->points[inliers->indices[i]]);
@@ -47,30 +81,36 @@ void step1(string input, pcl::PointCloud<pcl::PointXYZ>::Ptr road, pcl::PointClo
 		it = it + a[n] - n;
 		indice_index.erase(it);
 	}
-	//std::cerr << ">> Done: " << tt.toc() << " ms\n";
+
+	std::cerr << "step1 >> Done! " << std::endl;
 	for (size_t i = 0; i < indice_index.size(); ++i)
 	{
 		remain->points.push_back(cloud->points[indice_index[i]]);
 	}
 }
+
+
 void step2(pcl::PointCloud<pcl::PointXYZ> cloud_in, pcl::PointCloud<pcl::PointXYZ> road, string path, string file)
 {
 	typedef pcl::PointXYZRGB PointT;
 	typedef pcl::LCCPSegmentation<PointT>::SupervoxelAdjacencyList SuperVoxelAdjacencyList;
-	//输入点云  
+	//???????
 	//pcl::console::TicToc tt;
 	pcl::PointCloud<PointT>::Ptr input_cloud_ptr(new pcl::PointCloud<PointT>);
 	pcl::PCLPointCloud2 input_pointcloud2;
 	pcl::copyPointCloud(cloud_in, *input_cloud_ptr);
+	PCL_INFO("input cloud size is  : %d", input_cloud_ptr->points.size());
+
 	//PCL_INFO("Done making cloud\n");
 	//std::cerr << "Start...\n", tt.tic();
-	//超体聚类 参数依次是粒子距离、晶核距离、颜色容差、  
+	//??????? ??????????????????????????????  
 	bool use_single_cam_transform = false;
 	bool use_supervoxel_refinement = false;
 
 	unsigned int k_factor = 0;
 
-	//voxel_resolution is the resolution (in meters) of voxels used、seed_resolution is the average size (in meters) of resulting supervoxels    
+	//voxel_resolution is the resolution (in meters) of voxels used??
+	//seed_resolution is the average size (in meters) of resulting supervoxels    
 	pcl::SupervoxelClustering<PointT> super(voxel_resolution, seed_resolution);
 	super.setUseSingleCameraTransform(use_single_cam_transform);
 	super.setInputCloud(input_cloud_ptr);
@@ -82,22 +122,22 @@ void step2(pcl::PointCloud<pcl::PointXYZ> cloud_in, pcl::PointCloud<pcl::PointXY
 	super.setNormalImportance(normal_importance);
 	std::map<uint32_t, pcl::Supervoxel<PointT>::Ptr> supervoxel_clusters;
 
-	//PCL_INFO("Extracting supervoxels\n");
+	PCL_INFO("Extracting supervoxels\n");
 	super.extract(supervoxel_clusters);
 
-	//PCL_INFO("Getting supervoxel adjacency\n");
+	PCL_INFO("Getting supervoxel adjacency\n");
 	std::multimap<uint32_t, uint32_t> supervoxel_adjacency;
 	super.getSupervoxelAdjacency(supervoxel_adjacency);
 	//pcl::PointCloud<pcl::PointNormal>::Ptr sv_centroid_normal_cloud = pcl::SupervoxelClustering<PointT>::makeSupervoxelNormalCloud(supervoxel_clusters);
 
-	//LCCP分割  
+	//LCCP???  
 	float concavity_tolerance_threshold = 10.0;// 8 
-	float smoothness_threshold = 0.1;//1.0 无太大影响
+	float smoothness_threshold = 0.1;//1.0 ????????
 	uint32_t min_segment_size = 20;
 	uint32_t noise_size = 20;
 	bool use_extended_convexity = false;
 	bool use_sanity_criterion = false;
-	//PCL_INFO("Starting Segmentation\n");
+	PCL_INFO("Starting Segmentation\n");
 	pcl::LCCPSegmentation<PointT> lccp;
 	lccp.setConcavityToleranceThreshold(concavity_tolerance_threshold);
 	lccp.setSmoothnessCheck(true, voxel_resolution, seed_resolution, smoothness_threshold);
@@ -105,7 +145,7 @@ void step2(pcl::PointCloud<pcl::PointXYZ> cloud_in, pcl::PointCloud<pcl::PointXY
 	lccp.setInputSupervoxels(supervoxel_clusters, supervoxel_adjacency);
 	lccp.setMinSegmentSize(min_segment_size);
 	lccp.segment();
-	//PCL_INFO("Interpolation voxel cloud -> input cloud and relabeling\n");
+	PCL_INFO("Interpolation voxel cloud -> input cloud and relabeling\n");
 	pcl::PointCloud<pcl::PointXYZL>::Ptr sv_labeled_cloud = super.getLabeledCloud();
 
 	//pcl::PointCloud<pcl::PointXYZL>::Ptr lccp_labeled_cloud = sv_labeled_cloud->makeShared();
@@ -160,7 +200,7 @@ void step2(pcl::PointCloud<pcl::PointXYZ> cloud_in, pcl::PointCloud<pcl::PointXY
 		cloud_cluster->points[m].g = rgb1[1];
 		cloud_cluster->points[m].b = rgb1[2];
 	}
-	for (pit = labels.begin(); pit != labels.end(); ++pit)//遍历所有的label
+	for (pit = labels.begin(); pit != labels.end(); ++pit)//???????锟斤拷?label
 	{
 
 		std::vector<int> rgb;
@@ -173,7 +213,7 @@ void step2(pcl::PointCloud<pcl::PointXYZ> cloud_in, pcl::PointCloud<pcl::PointXY
 		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_cluster1(new pcl::PointCloud<pcl::PointXYZRGB>);
 		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cluster_xyz(new pcl::PointCloud<pcl::PointXYZ>);
 		pcl::PointXYZRGB single_cloud;
-		for (int j = 0; j < point_num; j++)//遍历所有的point
+		for (int j = 0; j < point_num; j++)//???????锟斤拷?point
 		{
 			if (sv_labeled_cloud->points[j].label == *pit)
 			{
