@@ -3,6 +3,12 @@ A lidar pointcloud cnn.
 
 
 
+
+### 2020-05-14
+
+- add pcat open source for pointcloud annotation.
+
+
 ### 2019-11-14
 
 - setup matlab for ubuntu 18.04;
@@ -16,6 +22,7 @@ A lidar pointcloud cnn.
 
 - 配置dgcnn-lua工程环境；
 - 未完成，下载Matlab花费了太多时间；
+
 
 ### 2019-10-29
 for thesis
